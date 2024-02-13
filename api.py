@@ -66,24 +66,83 @@ async def encrypt_image_api(image_file: UploadFile = File(...), key = os.urandom
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-def apply_filter(image: Image.Image):
+def apply_filter(img1: Image.Image, img2: Image.Image):
     # Convert the PIL image to a NumPy array
-    img_array = np.array(image)
+    img_array = np.array(img1)
     # Apply the filter (set green and blue channels to 0)
     img_array[:, :, 1] = 0  # Green channel
     img_array[:, :, 2] = 0  # Blue channel
     # Convert the filtered NumPy array back to a PIL image
-    filtered_image = Image.fromarray(img_array)
-    return filtered_image
+    imagen_filtrada1 = Image.fromarray(img_array)
+    
+    img_array2 = np.array(img2)
+    # Apply the filter (set green and blue channels to 0)
+    img_array2[:, :, 0] = 0  # Green channel
+    img_array2[:, :, 1] = 0  # Blue channel
+    # Convert the filtered NumPy array back to a PIL image
+    imagen_filtrada2 = Image.fromarray(img_array2)
+
+    matriz_imagen = np.array(imagen_filtrada1)
+
+    max_columnas = matriz_imagen.shape[1]
+    secuencia_aleatoria = np.random.permutation(max_columnas) + 1
+
+    # Imprime la secuencia generada
+    print("Secuencia de valores aleatorios sin repeticiones:", secuencia_aleatoria)
+
+    # Usa la secuencia de valores aleatorios para transponer las columnas
+    matriz_transpuesta = matriz_imagen[:, secuencia_aleatoria - 1]
+
+    #mostrar la imagen transpuesta
+    imagen_transpuesta = Image.fromarray(matriz_transpuesta)
+    imagen_transpuesta.save("imagen_transpuesta.jpg")
+
+    # Guarda la matriz original y secuencia original
+    matriz_original = matriz_transpuesta.copy()
+    secuencia_aleatoria_original = secuencia_aleatoria.copy()
+
+    # Transpone nuevamente las columnas con la secuencia aleatoria invertida
+    secuencia_aleatoria_invertida = np.argsort(secuencia_aleatoria_original)
+    matriz_original = matriz_original[:, secuencia_aleatoria_invertida]
+    imagen_original = Image.fromarray(matriz_original)
+
+    matriz_segunda_imagen = np.array(imagen_filtrada2)
+
+# Obtener la forma de la matriz transpuesta
+    filas_transpuesta, columnas_transpuesta, _ = matriz_transpuesta.shape
+
+    # Obtener las dimensiones de la segunda imagen
+    filas_segunda_imagen, columnas_segunda_imagen, _ = matriz_segunda_imagen.shape
+
+    # Ajustar las dimensiones de la segunda imagen si es necesario
+    if filas_transpuesta > filas_segunda_imagen or columnas_transpuesta > columnas_segunda_imagen:
+        nueva_filas = max(filas_transpuesta, filas_segunda_imagen)
+        nueva_columnas = max(columnas_transpuesta, columnas_segunda_imagen)
+        segunda_imagen = imagen_filtrada2.resize((nueva_columnas, nueva_filas))
+
+        # Actualizar la matriz de la segunda imagen
+        matriz_segunda_imagen = np.array(segunda_imagen)
+
+    # Iterar sobre las posiciones pares de la segunda imagen y reemplazar con la matriz transpuesta
+    for i in range(filas_transpuesta):
+        for j in range(columnas_transpuesta):
+            if i % 2 == 0 and j % 2 == 0:  # Si la fila y la columna son pares
+                matriz_segunda_imagen[i, j] = matriz_transpuesta[i, j]
+
+    # Crear una nueva imagen a partir de la matriz modificada
+    nueva_imagen = Image.fromarray(matriz_segunda_imagen)
+    return nueva_imagen
 
 @app.post("/uploadfile/")
-async def create_upload_file(file: UploadFile):
-    # Read the contents of the uploaded file
-    contents = await file.read()
+async def create_upload_file(img1: UploadFile,img2: UploadFile ):
+    # Read the contents of the uploaded img1
+    cont1 = await img1.read()
+    cont2 = await img2.read()
     # Open the image using PIL
-    img = Image.open(BytesIO(contents))
+    image1 = Image.open(BytesIO(cont1))
+    image2 = Image.open(BytesIO(cont2))
     # Apply the filter
-    filtered_img = apply_filter(img)
+    filtered_img = apply_filter(image1,image2)
     # Save the filtered image to a BytesIO buffer
     img_bytes = BytesIO()
     filtered_img.save(img_bytes, format="JPEG")
