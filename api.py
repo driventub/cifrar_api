@@ -9,7 +9,20 @@ import matplotlib.pyplot as plt
 from PIL import Image
 from starlette.responses import StreamingResponse
 
+from fastapi.middleware.cors import CORSMiddleware  # NEW
+
 app = FastAPI()
+
+origins = ["http://localhost:8080"]  # Replace with your Vue app's origin
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 def encrypt_image(image_path: str, key: bytes) -> bytes:
     """
@@ -68,21 +81,21 @@ async def encrypt_image_api(image_file: UploadFile = File(...), key = os.urandom
 
 def apply_filter(img1: Image.Image, img2: Image.Image):
     # Convert the PIL image to a NumPy array
-    img_array = np.array(img1)
-    # Apply the filter (set green and blue channels to 0)
-    img_array[:, :, 1] = 0  # Green channel
-    img_array[:, :, 2] = 0  # Blue channel
-    # Convert the filtered NumPy array back to a PIL image
-    imagen_filtrada1 = Image.fromarray(img_array)
+    # img_array = np.array(img1)
+    # # Apply the filter (set green and blue channels to 0)
+    # img_array[:, :, 1] = 0  # Green channel
+    # img_array[:, :, 2] = 0  # Blue channel
+    # # Convert the filtered NumPy array back to a PIL image
+    # imagen_filtrada1 = Image.fromarray(img_array)
     
-    img_array2 = np.array(img2)
-    # Apply the filter (set green and blue channels to 0)
-    img_array2[:, :, 0] = 0  # Green channel
-    img_array2[:, :, 1] = 0  # Blue channel
-    # Convert the filtered NumPy array back to a PIL image
-    imagen_filtrada2 = Image.fromarray(img_array2)
+    # img_array2 = np.array(img2)
+    # # Apply the filter (set green and blue channels to 0)
+    # img_array2[:, :, 0] = 0  # Green channel
+    # img_array2[:, :, 1] = 0  # Blue channel
+    # # Convert the filtered NumPy array back to a PIL image
+    # imagen_filtrada2 = Image.fromarray(img_array2)
 
-    matriz_imagen = np.array(imagen_filtrada1)
+    matriz_imagen = np.array(img1)
 
     max_columnas = matriz_imagen.shape[1]
     secuencia_aleatoria = np.random.permutation(max_columnas) + 1
@@ -106,7 +119,7 @@ def apply_filter(img1: Image.Image, img2: Image.Image):
     matriz_original = matriz_original[:, secuencia_aleatoria_invertida]
     imagen_original = Image.fromarray(matriz_original)
 
-    matriz_segunda_imagen = np.array(imagen_filtrada2)
+    matriz_segunda_imagen = np.array(img2)
 
 # Obtener la forma de la matriz transpuesta
     filas_transpuesta, columnas_transpuesta, _ = matriz_transpuesta.shape
@@ -118,7 +131,7 @@ def apply_filter(img1: Image.Image, img2: Image.Image):
     if filas_transpuesta > filas_segunda_imagen or columnas_transpuesta > columnas_segunda_imagen:
         nueva_filas = max(filas_transpuesta, filas_segunda_imagen)
         nueva_columnas = max(columnas_transpuesta, columnas_segunda_imagen)
-        segunda_imagen = imagen_filtrada2.resize((nueva_columnas, nueva_filas))
+        segunda_imagen = img2.resize((nueva_columnas, nueva_filas))
 
         # Actualizar la matriz de la segunda imagen
         matriz_segunda_imagen = np.array(segunda_imagen)
@@ -131,7 +144,13 @@ def apply_filter(img1: Image.Image, img2: Image.Image):
 
     # Crear una nueva imagen a partir de la matriz modificada
     nueva_imagen = Image.fromarray(matriz_segunda_imagen)
-    return nueva_imagen
+
+    matriz_original2 = matriz_segunda_imagen[:, secuencia_aleatoria_invertida]
+
+
+    # Crea una nueva imagen a partir de la matriz original
+    imagen_original = Image.fromarray(matriz_original2)
+    return imagen_original
 
 @app.post("/uploadfile/")
 async def create_upload_file(img1: UploadFile,img2: UploadFile ):
