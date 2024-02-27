@@ -144,18 +144,19 @@ def apply_filter(img1: Image.Image, img2: Image.Image):
 
     # Crear una nueva imagen a partir de la matriz modificada
     nueva_imagen = Image.fromarray(matriz_segunda_imagen)
+    print(type(matriz_segunda_imagen))
+    print(type(secuencia_aleatoria_invertida))
+    return nueva_imagen, matriz_segunda_imagen, matriz_original, secuencia_aleatoria_invertida
 
+def descifrar(matriz_segunda_imagen, secuencia_aleatoria_invertida):
     matriz_original2 = matriz_segunda_imagen[:, secuencia_aleatoria_invertida]
 
 
     # Crea una nueva imagen a partir de la matriz original
     imagen_original = Image.fromarray(matriz_original2)
 
-    similarity_score = compare_matrices(matriz_original, matriz_original2)
-    print("Mean Absolute Error:", similarity_score)
-
-    display_histograms(matriz_original, matriz_original2)
-    return nueva_imagen
+    
+    return imagen_original, matriz_original2
 
 def compare_matrices(matriz_original, matriz_modified):
   """
@@ -225,10 +226,36 @@ async def create_upload_file(img1: UploadFile,img2: UploadFile ):
     image1 = Image.open(BytesIO(cont1))
     image2 = Image.open(BytesIO(cont2))
     # Apply the filter
-    filtered_img = apply_filter(image1,image2)
+    nueva_imagen, matriz_segunda_imagen, matriz_original, secuencia_aleatoria_invertida = apply_filter(image1,image2)
     # Save the filtered image to a BytesIO buffer
     img_bytes = BytesIO()
-    filtered_img.save(img_bytes, format="JPEG")
+    nueva_imagen.save(img_bytes, format="JPEG")
+    img_bytes.seek(0)
+    # Return the filtered image bytes as a response
+    return StreamingResponse(img_bytes, media_type="image/jpeg")
+
+@app.post("/descifrar/")
+async def descifrarImagen(img1: UploadFile,img2: UploadFile ):
+    # Read the contents of the uploaded img1
+    cont1 = await img1.read()
+    cont2 = await img2.read()
+    # Open the image using PIL
+    image1 = Image.open(BytesIO(cont1))
+    image2 = Image.open(BytesIO(cont2))
+    
+    
+    # Apply the filter
+    nueva_imagen, matriz_segunda_imagen, matriz_original, secuencia_aleatoria_invertida = apply_filter(image1,image2)
+
+    imagen_original, matriz_original2 = descifrar(matriz_segunda_imagen, secuencia_aleatoria_invertida)
+    # Save the filtered image to a BytesIO buffer
+    similarity_score = compare_matrices(matriz_original, matriz_original2)
+    print("Mean Absolute Error:", similarity_score)
+
+    display_histograms(matriz_original, matriz_original2)
+    
+    img_bytes = BytesIO()
+    imagen_original.save(img_bytes, format="JPEG")
     img_bytes.seek(0)
     # Return the filtered image bytes as a response
     return StreamingResponse(img_bytes, media_type="image/jpeg")
